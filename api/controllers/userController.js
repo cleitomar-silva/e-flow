@@ -5,10 +5,10 @@ import { SECRET } from "../secretJWT.js";
 
 const userController = {
   register: (req, res) => {
-    const { name, email, password, level, setores, login, empresa } = req.body;   
+    const {idUserCreated, name, email, password, level, department, login, company } = req.body;   
 
     // Verifica se todos os campos obrigatórios estão presentes
-    if (!login || !name || !password || !email || !level || !setores || !empresa) {
+    if (!login || !name || !password || !email || !level || !department || !company ) {
       return res.status(422).json({
         type: "erro",
         message: "Todos os campos são obrigatórios",
@@ -16,7 +16,7 @@ const userController = {
     }
 
     const now = new Date().toISOString();    
-    let setoresString = Array.isArray(setores) ? setores.join(",") : setores;
+    // let setoresString = Array.isArray(department) ? department.join(",") : department;
 
     const saltRounds = 10;
     const hashedPassword = bcryptjs.hashSync(password, saltRounds);
@@ -46,16 +46,24 @@ const userController = {
         }
 
         // 3️⃣ Se passou pelas verificações, cria o usuário      
-        User.create({ name, email, password: hashedPassword, level, setores: setoresString, login, empresa,now }, (err, result) => 
+        User.create({ name, email, password: hashedPassword, level, login, company,now,idUserCreated }, (err, result) => 
         {
             if (err) return res.status(500).json({ error: err });
+
+            const userId = result.insertId;
+            // 4️⃣ Inserir setores vinculados
+            if (Array.isArray(department) && department.length > 0) {
+              department.forEach((departmentId) => {
+                User.addDepartment({ userId, departmentId }, (err) => {
+                  if (err) console.error("Erro ao inserir setor:", err);
+                });
+              });
+            }
+
             res.status(201).json({
               message: "Usuário criado!",
               id: result.insertId,
             });
-
-            // TODO criar cadastro de setor_usuario
-
         });
       });
     });
@@ -85,13 +93,15 @@ const userController = {
   login: (req, res) => {
     const { email, password } = req.body;
 
-
+    
 
     if (!email || !password) {
       return res
         .status(400)
         .json({ error: "Os campos 'email' e 'senha' são obrigatórios." });
     }
+
+    
 
 
     User.findByEmail(email, (err, result) => {
@@ -104,22 +114,22 @@ const userController = {
       const user = result[0]; // usuário encontrado no banco     
 
       // 1️⃣ Caso usuário precise redefinir senha
-      if (user.senha === null && user.status === 1) {
+      if (user.password === null && user.status === 1) {
         return res.status(200).json({
           id: user.id,
           login: user.login,
           message: "Redefinir Senha",
           type: "redefinir"
         });
-      }
+      }     
 
       // 2️⃣ Comparação da senha
-      const passwordMatch = bcryptjs.compareSync(password, user.senha);
+      const passwordMatch = bcryptjs.compareSync(password, user.password);      
 
       if (passwordMatch && user.status === 1) {
 
         // Gera o token JWT
-        const token = jwt.sign({ userId: user.id, empresaId: user.empresa }, SECRET, { expiresIn: 28800 }); // 8 horas         
+        const token = jwt.sign({ userId: user.id, empresaId: user.company }, SECRET, { expiresIn: 28800 }); // 8 horas         
 
 
         return res.status(200).json({

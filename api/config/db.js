@@ -5,7 +5,7 @@ const connection = mysql.createConnection({
   host: 'localhost',
   user: 'root',
   password: 'root', 
-  database: 'protocolo'
+  database: 'e_flow_docs'
 });
 
 connection.connect((err) => {

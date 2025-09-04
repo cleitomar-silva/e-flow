@@ -8,6 +8,7 @@ router.post('/register',authMiddleware, userController.register);
 router.get('/',authMiddleware, userController.getAllUsers);
 router.get('/:id',authMiddleware, userController.getUserById);
 router.post('/login', userController.login);
+// TODO update e delete
 
 
 
